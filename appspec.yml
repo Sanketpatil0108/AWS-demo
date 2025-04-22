@@ -1,14 +1,31 @@
 version: 0.0
 os: linux
 files:
-  - source: /
-    destination: /home/ec2-user/app
+  # For the frontend React application
+  - source: /frontend
+    destination: /home/ec2-user/deploy/frontend
+
+  # For the backend Spring Boot application
+  - source: /backend
+    destination: /home/ec2-user/deploy/backend
+
+permissions:
+  # Set the permissions to allow EC2 user to access files
+  - object: /home/ec2-user/deploy/*
+    pattern: "**"
+    owner: ec2-user
+    group: ec2-user
+    mode: 755
+
 hooks:
-  AfterInstall:
-    - location: scripts/install.sh
+  # Pre-deployment hook (Optional, run before the deployment)
+  BeforeInstall:
+    - location: scripts/install_dependencies.sh
       timeout: 300
       runas: ec2-user
-  ApplicationStart:
-    - location: scripts/start.sh
+
+  # Post-deployment hook (Optional, run after deployment)
+  AfterInstall:
+    - location: scripts/start_services.sh
       timeout: 300
       runas: ec2-user
