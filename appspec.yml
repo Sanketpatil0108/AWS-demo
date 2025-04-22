@@ -2,11 +2,11 @@ version: 0.0
 os: linux
 files:
   # For the frontend React application
-  - source: /frontend
+  - source: AWS-demo/frontend
     destination: /home/ec2-user/deploy/frontend
 
   # For the backend Spring Boot application
-  - source: /backend
+  - source: AWS-demo/backend
     destination: /home/ec2-user/deploy/backend
 
 permissions:
