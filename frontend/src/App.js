@@ -1,7 +1,7 @@
 function App() {
   return (
     <div>
-      <h1>Hello from React App!</h1>
+      <h1>Hello team from React App!</h1>
     </div>
   );
 }
