@@ -1,7 +1,18 @@
+import React, { useEffect, useState } from 'react';
+
 function App() {
+  const [backendMessage, setBackendMessage] = useState('');
+
+  useEffect(() => {
+    fetch('/api/message')
+      .then(res => res.text())
+      .then(data => setBackendMessage(data));
+  }, []);
+
   return (
     <div>
-      <h1>Hell team from React App !</h1>
+      <h2>Hii from frontend</h2>
+      <h3>{backendMessage}</h3>
     </div>
   );
 }

@@ -1,0 +1,11 @@
+# Root
+node_modules/
+build/
+target/
+.env
+
+# Frontend
+/frontend/node_modules
+
+# Backend
+/backend/target
