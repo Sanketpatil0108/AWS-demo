@@ -6,22 +6,31 @@ phases:
       java: corretto17
       nodejs: 18
     commands:
-      - echo Installing Maven and Node modules
-      - cd frontend && npm install && cd ..
-      - cd backend && mvn clean install -DskipTests && cd ..
+      - echo Installing backend...
+      - cd backend
+      - mvn clean install -DskipTests
+      - cd ../frontend
+      - echo Installing frontend...
+      - npm install
+
   build:
     commands:
       - echo Building frontend...
-      - cd frontend && npm run build && cd ..
+      - npm run build
+      - cd ..
+      - echo Copying frontend to backend static folder...
+      - cp -r frontend/build/* backend/src/main/resources/static/
+      - cd backend
+      - echo Building JAR...
+      - mvn package -DskipTests
+
   post_build:
     commands:
-      - echo Copying frontend to Apache root
-      - sudo rm -rf /var/www/html/*
-      - sudo cp -r frontend/build/* /var/www/html/
-      - echo Deploying backend...
-      - sudo pkill -f 'backend-0.0.1-SNAPSHOT.jar' || true
-      - nohup java -jar backend/target/backend-0.0.1-SNAPSHOT.jar > /dev/null 2>&1 &
+      - echo Deploying to EC2...
+      - chmod 400 scripts/ec2-key.pem
+      - scp -o StrictHostKeyChecking=no -i scripts/ec2-key.pem backend/target/*.jar ec2-user@<EC2_PUBLIC_IP>:/home/ec2-user/app.jar
+      - ssh -o StrictHostKeyChecking=no -i scripts/ec2-key.pem ec2-user@<EC2_PUBLIC_IP> "pkill -f 'java -jar' || true && nohup java -jar /home/ec2-user/app.jar > /home/ec2-user/app.log 2>&1 &"
+
 artifacts:
   files:
-    - '**/*'
-    - '!**/node_modules/**/*'
+    - backend/target/*.jar
