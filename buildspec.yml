@@ -25,7 +25,7 @@ phases:
       - mvn package -DskipTests
 
   post_build:
-  commands:
+    commands:
     - echo Downloading EC2 key from S3...
     - aws s3 cp s3://my-deployment-secrets/ec2-key.pem ec2-key.pem
     - chmod 400 ec2-key.pem
