@@ -10,7 +10,9 @@ phases:
       - cd frontend
       - npm install
       - cd ../backend
-      - ./mvnw clean install -DskipTests
+      - ls -l  # List files in backend folder to ensure mvnw is present
+      - chmod +x ./mvnw  # Make sure mvnw is executable
+      - ./mvnw clean install -DskipTests  # Run mvnw to build the backend
       - cd ..
 
   build:
@@ -36,20 +38,4 @@ phases:
 
       # Fetching the private key from Secrets Manager
       - echo Fetching private key from Secrets Manager
-      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > /tmp/private_key.pem
-      - chmod 400 /tmp/private_key.pem
-
-      # SSH into EC2 and deploy
-      - echo Deploying to EC2
-      - scp -o StrictHostKeyChecking=no -i /tmp/private_key.pem -r deploy/* ec2-user@52.87.178.31:/home/ec2-user/deploy
-      - ssh -o StrictHostKeyChecking=no -i /tmp/private_key.pem ec2-user@52.87.178.31 << 'EOF'
-          pkill -f 'backend.jar' || true
-          nohup java -jar /home/ec2-user/deploy/backend.jar > /home/ec2-user/backend.log 2>&1 &
-          sudo rm -rf /var/www/html/*
-          sudo cp -r /home/ec2-user/deploy/frontend/* /var/www/html/
-        EOF
-
-
-artifacts:
-  files:
-    - deploy/**
+      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --outpu
