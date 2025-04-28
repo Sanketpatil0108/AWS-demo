@@ -4,36 +4,52 @@ phases:
   install:
     runtime-versions:
       java: corretto17
-      nodejs: 18
+      nodejs: 20
     commands:
-      - echo Installing backend...
-      - cd backend
-      - mvn clean install -DskipTests
-      - cd ../frontend
-      - echo Installing frontend...
+      - echo Installing frontend and backend dependencies
+      - cd frontend
       - npm install
+      - cd ../backend
+      - ./mvnw clean install -DskipTests
+      - cd ..
 
   build:
     commands:
-      - echo Building frontend...
+      - echo Building frontend
+      - cd frontend
       - npm run build
       - cd ..
-      - echo Copying frontend to backend static folder...
-      - cp -r frontend/build/* backend/src/main/resources/static/
+      - echo Frontend built
+
+      - echo Building backend
       - cd backend
-      - echo Building JAR...
-      - mvn package -DskipTests
+      - ./mvnw package -DskipTests
+      - cd ..
+      - echo Backend built
 
   post_build:
     commands:
-      - echo Deploying via SSM...
-      - aws ssm send-command \
-          --instance-ids i-0de2d6bb45d4b7a19 \
-          --document-name "AWS-RunShellScript" \
-          --comment "Deploy app" \
-          --parameters 'commands=["pkill -f java || true", "java -jar /home/ec2-user/app.jar > /home/ec2-user/app.log 2>&1 &"]' \
-          --region us-east-1
+      - echo Preparing deployment
+      - mkdir -p deploy
+      - cp backend/target/*.jar deploy/backend.jar
+      - cp -r frontend/build deploy/frontend
+
+      # Fetching the private key from Secrets Manager
+      - echo Fetching private key from Secrets Manager
+      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > /tmp/private_key.pem
+      - chmod 400 /tmp/private_key.pem
+
+      # SSH into EC2 and deploy
+      - echo Deploying to EC2
+      - scp -o StrictHostKeyChecking=no -i /tmp/private_key.pem -r deploy/* ec2-user@52.87.178.31:/home/ec2-user/deploy
+      - ssh -o StrictHostKeyChecking=no -i /tmp/private_key.pem ec2-user@52.87.178.31 << 'EOF'
+          pkill -f 'backend.jar' || true
+          nohup java -jar /home/ec2-user/deploy/backend.jar > /home/ec2-user/backend.log 2>&1 &
+          sudo rm -rf /var/www/html/*
+          sudo cp -r /home/ec2-user/deploy/frontend/* /var/www/html/
+        EOF
+
 
 artifacts:
   files:
-    - backend/target/*.jar
+    - deploy/**
