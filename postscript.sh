@@ -21,4 +21,3 @@ echo "[PostScript] Deploying frontend to Apache..." >> /home/ec2-user/deploy/dep
 sudo cp -r "$FRONTEND_BUILD_DIR"/* /var/www/html/
 
 echo "[PostScript] Post-deploy actions complete." >> /home/ec2-user/deploy/deploy.log
-#abc
