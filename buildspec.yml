@@ -16,7 +16,7 @@ phases:
     - echo "Installing backend dependencies..."
     - cd backend
     - ls -la
-    - mvn install -DskipTests
+    - mvn install   -DskipTests
     - cd ..
   build:
     commands:
@@ -35,6 +35,7 @@ phases:
 
       - echo "Copying postScript.sh to deploy directory..."
       - mkdir -p deploy
+      - cp target/*.jar ../deploy/
       - cp postScript.sh deploy/
   post_build:
     commands:
