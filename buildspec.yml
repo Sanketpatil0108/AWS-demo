@@ -16,8 +16,9 @@ phases:
       - echo "Installing backend dependencies..."
       - cd backend
       - ls -la
-      - mvn install   -DskipTests
+      - mvn install -DskipTests
       - cd ..
+
   build:
     commands:
       - echo "Building React frontend..."
@@ -33,11 +34,12 @@ phases:
       - mvn package -DskipTests
       - cd ..
 
-      - echo "Copying postScript.sh to deploy directory..."
+      - echo "Copying backend JAR to deploy directory..."
       - mkdir -p deploy
-      - ls -al target/
-      - cp target/*.jar ../deploy/
+      - ls -al backend/target/
+      - cp backend/target/*.jar deploy/
       - cp postScript.sh deploy/
+
   post_build:
     commands:
       - echo "Build completed successfully."
@@ -45,5 +47,5 @@ phases:
 artifacts:
   files:
     - backend/target/*.jar
-    - deploy/**/*       # Includes postScript.sh from deploy directory
+    - deploy/**/*
   discard-paths: no
