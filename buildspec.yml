@@ -6,14 +6,18 @@ phases:
       nodejs: 18
       java: corretto11
     commands:
-      - echo "Installing frontend dependencies..."
-      - cd frontend
-      - npm install
-      - cd ..
-      - echo "Installing backend dependencies..."
-      - cd backend
-      - mvn install
-      - cd ..
+    - echo "Checking directory structure..."
+    - ls -la
+    - echo "Installing frontend dependencies..."
+    - cd frontend
+    - ls -la
+    - npm install
+    - cd ..
+    - echo "Installing backend dependencies..."
+    - cd backend
+    - ls -la
+    - mvn install
+    - cd ..
   build:
     commands:
       - echo "Building React frontend..."
