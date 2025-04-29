@@ -6,30 +6,38 @@ phases:
       nodejs: 18
       java: corretto11
     commands:
-      - echo Installing frontend dependencies...
+      - echo "Installing frontend dependencies..."
       - cd frontend
       - npm install
       - cd ..
-      - echo Installing backend dependencies...
+      - echo "Installing backend dependencies..."
       - cd backend
       - mvn install
+      - cd ..
   build:
     commands:
-      - echo Building React frontend...
-      - cd ../frontend
+      - echo "Building React frontend..."
+      - cd frontend
       - npm run build
-      - echo Copying frontend build to Spring Boot static folder...
-      - cp -r build/* ../backend/src/main/resources/static/
-      - echo Building backend JAR...
-      - cd ../backend
+      - cd ..
+      
+      - echo "Copying frontend build to Spring Boot static folder..."
+      - cp -r frontend/build/* backend/src/main/resources/static/
+
+      - echo "Building backend JAR..."
+      - cd backend
       - mvn package -DskipTests
-      - cp postScript.sh deploy/  # <-- explicitly copy to deploy folder
+      - cd ..
+
+      - echo "Copying postScript.sh to deploy directory..."
+      - mkdir -p deploy
+      - cp postScript.sh deploy/
   post_build:
     commands:
-      - echo Build completed
+      - echo "Build completed successfully."
+
 artifacts:
   files:
-    #- '**/*'  
-    - deploy/**/*        
-    - backend/target/*.jar      # This includes postScript.sh and everything else
+    - backend/target/*.jar
+    - deploy/**/*       # Includes postScript.sh from deploy directory
   discard-paths: no
