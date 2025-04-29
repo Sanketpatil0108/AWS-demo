@@ -3,39 +3,33 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      java: corretto17
-      nodejs: 20
+      nodejs: 18
+      java: corretto11
     commands:
-      - echo Installing frontend and backend dependencies
+      - echo Installing frontend dependencies...
       - cd frontend
       - npm install
-      - cd ../backend
-      - ls -l  # List files in backend folder to ensure mvnw is present
-      - chmod +x ./mvnw  # Make sure mvnw is executable
-      - ./mvnw clean install -DskipTests  # Run mvnw to build the backend
       - cd ..
-
+      - echo Installing backend dependencies...
+      - cd backend
+      - mvn install
   build:
     commands:
-      - echo Building frontend
-      - cd frontend
+      - echo Building React frontend...
+      - cd ../frontend
       - npm run build
-      - cd ..
-      - echo Frontend built
-
-      - echo Building backend
-      - cd backend
-      - ./mvnw package -DskipTests
-      - cd ..
-      - echo Backend built
-
+      - echo Copying frontend build to Spring Boot static folder...
+      - cp -r build/* ../backend/src/main/resources/static/
+      - echo Building backend JAR...
+      - cd ../backend
+      - mvn package -DskipTests
+      - cp postScript.sh deploy/  # <-- explicitly copy to deploy folder
   post_build:
     commands:
-      - echo Preparing deployment
-      - mkdir -p deploy
-      - cp backend/target/*.jar deploy/backend.jar
-      - cp -r frontend/build deploy/frontend
-
-      # Fetching the private key from Secrets Manager
-      - echo Fetching private key from Secrets Manager
-      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --outpu
+      - echo Build completed
+artifacts:
+  files:
+    #- '**/*'  
+    - deploy/**/*        
+    - backend/target/*.jar      # This includes postScript.sh and everything else
+  discard-paths: no
