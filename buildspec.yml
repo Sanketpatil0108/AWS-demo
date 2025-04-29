@@ -35,6 +35,7 @@ phases:
 
       - echo "Copying postScript.sh to deploy directory..."
       - mkdir -p deploy
+      - ls -al target/
       - cp target/*.jar ../deploy/
       - cp postScript.sh deploy/
   post_build:
