@@ -10,12 +10,10 @@ phases:
       - ls -la
       - echo "Installing frontend dependencies..."
       - cd frontend
-      - ls -la
       - npm install
       - cd ..
       - echo "Installing backend dependencies..."
       - cd backend
-      - ls -la
       - mvn install -DskipTests
       - cd ..
       - echo "Fetching EC2 private key from SSM Parameter Store..."
@@ -30,7 +28,11 @@ phases:
       - npm run build
       - cd ..
       
-      - echo "Copying frontend build to Spring Boot static folder..."
+      - echo "Copying frontend build separately to deploy folder (optional for Apache)..."
+      - mkdir -p deploy/frontend
+      - cp -r frontend/build deploy/frontend/
+
+      - echo "Copying frontend to Spring Boot static resources..."
       - cp -r frontend/build/* backend/src/main/resources/static/
 
       - echo "Building backend JAR..."
@@ -38,15 +40,14 @@ phases:
       - mvn package -DskipTests
       - cd ..
 
-      - echo "Copying backend JAR to deploy directory..."
+      - echo "Copying backend JAR and post-deploy script..."
       - mkdir -p deploy
-      - ls -al backend/target/
       - cp backend/target/*.jar deploy/
       - cp postScript.sh deploy/
 
   post_build:
     commands:
-      - echo "Sending files to EC2..."
+      - echo "Sending deploy folder to EC2..."
       - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
 
 artifacts:
