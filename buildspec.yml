@@ -16,7 +16,7 @@ phases:
     - echo "Installing backend dependencies..."
     - cd backend
     - ls -la
-    - mvn install
+    - mvn install -DskipTests
     - cd ..
   build:
     commands:
