@@ -18,6 +18,14 @@ phases:
       - ls -la
       - mvn install -DskipTests
       - cd ..
+      - echo "Installing AWS CLI..."
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      - unzip awscliv2.zip
+      - sudo ./aws/install
+      - echo "Fetching EC2 private key from SSM Parameter Store..."
+      - aws ssm get-parameter --name /ec2/key-pair --with-decryption --query 'Parameter.Value' --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
+      - echo "Key fetched successfully!"
 
   build:
     commands:
@@ -43,9 +51,7 @@ phases:
   post_build:
     commands:
       - echo "Sending files to EC2..."
-      - chmod 400 ec2-key.pem  # Only if you download it inside the build
       - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
-
 
 artifacts:
   files:
