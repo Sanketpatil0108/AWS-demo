@@ -38,7 +38,7 @@ phases:
       - mkdir -p deploy
       - ls -al backend/target/
       - cp backend/target/*.jar deploy/
-      - cp postscript.sh deploy/
+      - cp postScript.sh deploy/
 
   post_build:
     commands:
