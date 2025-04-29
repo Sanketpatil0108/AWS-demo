@@ -42,7 +42,10 @@ phases:
 
   post_build:
     commands:
-      - echo "Build completed successfully."
+      - echo "Sending files to EC2..."
+      - chmod 400 ec2-key.pem  # Only if you download it inside the build
+      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
+
 
 artifacts:
   files:
