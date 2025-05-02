@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HelloController {
     @GetMapping("/api/message")
     public String getMessage() {
-        return "Hii Satyam from Backend";
+        return "Hii Satyam Bansal from Backend";
     }
 }
