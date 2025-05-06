@@ -31,7 +31,7 @@ phases:
   post_build:
     commands:
       - echo Retrieving SSH key from Secrets Manager...
-      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > secret.json
+      - aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text > secret.json
       - echo $(jq -r '.ssh-key' secret.json) > ec2-key.pem
       - chmod 400 ec2-key.pem
       
