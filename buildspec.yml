@@ -32,7 +32,7 @@ phases:
     commands:
       - echo Retrieving SSH private key from Secrets Manager...
       - |
-        SECRETS=$(aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text)
+        SECRETS=$(aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text)
         export SSH_KEY=$(echo $SECRETS | jq -r '.ssh-key')
         echo "$SSH_KEY" > ec2-key.pem
         chmod 400 ec2-key.pem
