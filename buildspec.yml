@@ -17,12 +17,12 @@ phases:
 
   build:
     commands:
-      - echo Build React frontend Docker image...
+      - echo Building React frontend Docker image...
       - cd frontend
       - docker build -t $FRONTEND_URI .
       - cd ..
       
-      - echo Build Spring Boot backend Docker image...
+      - echo Building Spring Boot backend Docker image...
       - cd backend
       - mvn package -DskipTests
       - docker build -t $BACKEND_URI .
@@ -30,12 +30,10 @@ phases:
 
   post_build:
     commands:
-      - echo Retrieving SSH private key from Secrets Manager...
-      - |
-        SECRETS=$(aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text)
-        export SSH_KEY=$(echo $SECRETS | jq -r '.ssh-key')
-        echo "$SSH_KEY" > ec2-key.pem
-        chmod 400 ec2-key.pem
+      - echo Retrieving SSH key from Secrets Manager...
+      - aws secretsmanager get-secret-value --secret-id ec2-ssh-key --query SecretString --output text > secret.json
+      - echo $(jq -r '.ssh-key' secret.json) > ec2-key.pem
+      - chmod 400 ec2-key.pem
 
       - echo Pushing Docker images to ECR...
       - docker push $FRONTEND_URI
