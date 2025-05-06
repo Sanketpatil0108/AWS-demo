@@ -11,8 +11,8 @@ phases:
       - REPO_BACKEND=my-backend-app
       - FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_FRONTEND
       - BACKEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_BACKEND
-      - echo $FRONTEND_URI
-      - echo $BACKEND_URI
+      - echo FRONTEND_URI=$FRONTEND_URI
+      - echo BACKEND_URI=$BACKEND_URI
       - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
   build:
@@ -21,7 +21,7 @@ phases:
       - cd frontend
       - docker build -t $FRONTEND_URI .
       - cd ..
-
+      
       - echo Build Spring Boot backend Docker image...
       - cd backend
       - mvn package -DskipTests
@@ -30,21 +30,35 @@ phases:
 
   post_build:
     commands:
+      - echo Retrieving SSH key from Secrets Manager...
+      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > secret.json
+      - echo $(jq -r '.ssh-key' secret.json) > ec2-key.pem
+      - chmod 400 ec2-key.pem
+      
       - echo Pushing Docker images to ECR...
       - docker push $FRONTEND_URI
       - docker push $BACKEND_URI
-
+      
       - echo SSH to EC2 and deploy Docker containers...
-      - aws ssm get-parameter --name /ec2/key-pair --with-decryption --query 'Parameter.Value' --output text > ec2-key.pem
-      - chmod 400 ec2-key.pem
-
       - |
-        ssh -o StrictHostKeyChecking=no -i ec2-key.pem ec2-user@34.229.200.248 <<EOF
+        ssh -o StrictHostKeyChecking=no -i ec2-key.pem ec2-user@34.229.200.248 << 'EOF'
+          REGION=us-east-1
+          ACCOUNT_ID=309071121886
+          FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-frontend-app
+          BACKEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-backend-app
+
+          echo Logging in to ECR...
           aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+
+          echo Pulling images...
           docker pull $FRONTEND_URI
           docker pull $BACKEND_URI
+
+          echo Stopping old containers...
           docker stop frontend || true && docker rm frontend || true
           docker stop backend || true && docker rm backend || true
+
+          echo Running new containers...
           docker run -d --name frontend -p 80:80 $FRONTEND_URI
           docker run -d --name backend -p 8080:8080 $BACKEND_URI
         EOF
