@@ -17,12 +17,12 @@ phases:
 
   build:
     commands:
-      - echo Building React frontend Docker image...
+      - echo Build React frontend Docker image...
       - cd frontend
       - docker build -t $FRONTEND_URI .
       - cd ..
       
-      - echo Building Spring Boot backend Docker image...
+      - echo Build Spring Boot backend Docker image...
       - cd backend
       - mvn package -DskipTests
       - docker build -t $BACKEND_URI .
@@ -31,17 +31,17 @@ phases:
   post_build:
     commands:
       - echo Retrieving SSH key from Secrets Manager...
-      - aws secretsmanager get-secret-value --secret-id secret2 --query SecretString --output text > secret.json
-      - echo $(jq -r '.ssh-key' secret.json) > ec2-key.pem
+      - SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text)
+      - echo $SECRET_KEY | jq -r '.["ssh-key"]' > ec2-key.pem
       - chmod 400 ec2-key.pem
-
+      
       - echo Pushing Docker images to ECR...
       - docker push $FRONTEND_URI
       - docker push $BACKEND_URI
       
       - echo SSH to EC2 and deploy Docker containers...
       - |
-        ssh -o StrictHostKeyChecking=no -i ec2-key.pem ec2-user@34.229.200.248 << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i <(echo $SECRET_KEY | jq -r '.["ssh-key"]') ec2-user@34.229.200.248 << 'EOF'
           REGION=us-east-1
           ACCOUNT_ID=309071121886
           FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-frontend-app
