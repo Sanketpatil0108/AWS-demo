@@ -2,46 +2,34 @@ version: 0.2
 
 phases:
   install:
+    runtime-versions:
+      nodejs: 18
+      java: corretto17
     commands:
-      - echo Installing Docker...
-
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - REACT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
-      - BACKEND_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REACT_REPO_URI
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $BACKEND_REPO_URI
+      - echo Installing dependencies...
+      - cd frontend && npm install && cd ..
+      - cd backend && mvn install -DskipTests && cd ..
+      - aws secretsmanager get-secret-value --secret-id /ec2/key-pair --query SecretString --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
 
   build:
     commands:
-      - echo Building Docker images...
-      - cd frontend
-      - docker build -t react-app .
-      - docker tag react-app:latest $REACT_REPO_URI:latest
-      - cd ../backend
-      - docker build -t springboot-backend .
-      - docker tag springboot-backend:latest $BACKEND_REPO_URI:latest
+      - echo Building React app...
+      - cd frontend && npm run build && cd ..
+      - echo Packaging Spring Boot app...
+      - cd backend && mvn package -DskipTests && cd ..
+      - echo Preparing Docker deployment...
+      - mkdir -p deploy
+      - cp -r docker-compose.yml postScript.sh frontend backend deploy/
 
   post_build:
     commands:
-      - echo Pushing images to ECR...
-      - docker push $REACT_REPO_URI:latest
-      - docker push $BACKEND_REPO_URI:latest
+      - echo Deploying to EC2 via SCP...
+      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
+      - echo Starting containers on EC2...
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/deploy/postScript.sh"]}' --region us-east-1
 
-      - echo Deploying containers on EC2 via SSM...
-      - |
-        aws ssm send-command \
-          --document-name "AWS-RunShellScript" \
-          --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" \
-          --region us-east-1 \
-          --parameters 'commands=[
-            "docker network create app-network",
-            "docker pull 309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo:latest",
-            "docker pull 309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo:latest",
-            "docker rm -f react-app || true",
-            "docker rm -f springboot-backend || true",
-            "docker run -d --name springboot-backend --network app-network -p 8080:8080 309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo:latest",
-            "docker run -d --name react-app --network app-network -p 80:80 309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo:latest"
-          ]' \
-          --output text
+artifacts:
+  files:
+    - backend/target/*.jar
+    - deploy/**

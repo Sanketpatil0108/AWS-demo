@@ -1,0 +1,47 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Installing Docker...
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - REACT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
+      - BACKEND_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REACT_REPO_URI
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $BACKEND_REPO_URI
+
+  build:
+    commands:
+      - echo Building Docker images...
+      - cd frontend
+      - docker build -t react-app .
+      - docker tag react-app:latest $REACT_REPO_URI:latest
+      - cd ../backend
+      - docker build -t springboot-backend .
+      - docker tag springboot-backend:latest $BACKEND_REPO_URI:latest
+
+  post_build:
+    commands:
+      - echo Pushing images to ECR...
+      - docker push $REACT_REPO_URI:latest
+      - docker push $BACKEND_REPO_URI:latest
+
+      - echo Deploying containers on EC2 via SSM...
+      - |
+        aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" \
+          --region us-east-1 \
+          --parameters 'commands=[
+            "docker network create app-network",
+            "docker pull 309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo:latest",
+            "docker pull 309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo:latest",
+            "docker rm -f react-app || true",
+            "docker rm -f springboot-backend || true",
+            "docker run -d --name springboot-backend --network app-network -p 8080:8080 309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo:latest",
+            "docker run -d --name react-app --network app-network -p 80:80 309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo:latest"
+          ]' \
+          --output text
