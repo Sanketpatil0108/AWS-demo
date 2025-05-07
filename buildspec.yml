@@ -23,6 +23,16 @@ phases:
       - echo Packaging Spring Boot app...
       - cd backend && mvn package -DskipTests && cd ..
       - echo Preparing Docker deployment...
+      
+      # Docker build for frontend (React app)
+      - docker build -t frontend:latest frontend/
+      - docker tag frontend:latest 309071121886.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
+
+      # Docker build for backend (Spring Boot app)
+      - docker build -t backend:latest backend/
+      - docker tag backend:latest 309071121886.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/backend:latest
 
   post_build:
     commands:
@@ -46,4 +56,4 @@ phases:
 artifacts:
   files:
     - backend/target/*.jar
-    - deploy/**/*
+    - deploy/**/*  # Include the deploy files in the artifacts for later use

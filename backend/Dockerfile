@@ -1,5 +1,14 @@
-FROM eclipse-temurin:17-jdk-alpine
+# Use an official OpenJDK runtime as a parent image
+FROM openjdk:11-jdk-slim
+
+# Set the working directory inside the container
 WORKDIR /app
-COPY target/*.jar app.jar
+
+# Copy the JAR file built by Maven to the container
+COPY target/*.jar /app/backend.jar
+
+# Expose the port on which the backend will run
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Run the JAR file
+ENTRYPOINT ["java", "-jar", "backend.jar"]

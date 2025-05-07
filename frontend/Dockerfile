@@ -1,11 +1,25 @@
-# Build stage
-FROM node:18 as build
+# Use official Node.js image to build the frontend
+FROM node:18 AS build
+
+# Set the working directory for the app
 WORKDIR /app
-COPY . .
+
+# Install dependencies
+COPY package.json package-lock.json /app/
 RUN npm install
+
+# Copy the source code and build the frontend app
+COPY . /app/
 RUN npm run build
 
-# Serve stage
+# Use Nginx to serve the build files
 FROM nginx:alpine
+
+# Copy the built app to the Nginx container
 COPY --from=build /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
+
+# Expose port 80 to serve the app
+EXPOSE 80
+
+# Run Nginx
+CMD ["nginx", "-g", "daemon off;"]
