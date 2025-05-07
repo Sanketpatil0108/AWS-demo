@@ -13,10 +13,23 @@ phases:
 
   build:
     commands:
+      # Build the React app
       - cd frontend && npm run build && cd ..
+      
+      # Ensure the backend static directory exists and copy frontend build files to backend static
+      - mkdir -p backend/src/main/resources/static
       - cp -r frontend/build/* backend/src/main/resources/static/
+      
+      # Build the Spring Boot application (this generates the .jar file)
       - cd backend && mvn package -DskipTests && cd ..
-      - mkdir -p deploy && cp backend/target/*.jar deploy/
+      
+      # Ensure deploy directory exists
+      - mkdir -p deploy
+      
+      # Copy the backend .jar file to deploy directory
+      - cp backend/target/*.jar deploy/
+      
+      # If postScript.sh exists, copy it to the deploy directory
       - cp postScript.sh deploy/
 
   post_build:
