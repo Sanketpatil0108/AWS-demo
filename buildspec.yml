@@ -10,12 +10,7 @@ phases:
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
       - echo "Fetching EC2 key from Secrets Manager"
-      - echo "$(
-          aws secretsmanager get-secret-value \
-          --secret-id New-secret \
-          --query SecretString \
-          --output text
-        )" > ec2-key.pem
+      - aws secretsmanager get-secret-value --secret-id New-secret --query SecretString --output text > ec2-key.pem
       - chmod 400 ec2-key.pem
 
   build:
@@ -36,6 +31,8 @@ phases:
   post_build:
     commands:
       - echo "Copying deploy files to EC2 via SCP"
+      - aws secretsmanager get-secret-value --secret-id New-secret --query SecretString --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
       - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
       - echo "Running start script on EC2 via SSM"
       - aws ssm send-command \
