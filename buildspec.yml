@@ -4,56 +4,27 @@ phases:
   install:
     runtime-versions:
       nodejs: 18
-      java: corretto17
+      java: corretto11
     commands:
-      - echo Installing dependencies...
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
-      - echo Base64-encoding deployment package...
-      - mkdir -p deploy
-      - cp -r docker-compose.yml postScript.sh frontend backend deploy/
-      - cd deploy && zip -r ../deploy.zip . && cd ..
-      - base64 deploy.zip > deploy.b64
-      - chmod 400 deploy.b64  # Make sure it's secure while building
+      - aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
 
   build:
     commands:
-      - echo Building React app...
       - cd frontend && npm run build && cd ..
-      - echo Packaging Spring Boot app...
+      - cp -r frontend/build/* backend/src/main/resources/static/
       - cd backend && mvn package -DskipTests && cd ..
-      - echo Preparing Docker deployment...
-      
-      # Docker build for frontend (React app)
-      - docker build -t frontend:latest frontend/
-      - docker tag frontend:latest 309071121886.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
-      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
-
-      # Docker build for backend (Spring Boot app)
-      - docker build -t backend:latest backend/
-      - docker tag backend:latest 309071121886.dkr.ecr.us-east-1.amazonaws.com/backend:latest
-      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/backend:latest
+      - mkdir -p deploy && cp backend/target/*.jar deploy/
+      - cp postScript.sh deploy/
 
   post_build:
     commands:
-      - echo Sending base64 payload to EC2 via SSM...
-      - |
-        aws ssm send-command \
-          --document-name "AWS-RunShellScript" \
-          --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" \
-          --comment "Deploy app via base64 payload" \
-          --parameters '{
-            "commands": [
-              "cd /home/ec2-user",
-              "echo $(cat deploy.b64) | base64 -d > deploy.zip",
-              "unzip -o deploy.zip -d deploy",
-              "chmod +x deploy/postScript.sh",
-              "bash deploy/postScript.sh"
-            ]
-          }' \
-          --region us-east-1
+      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/start-app.sh"]}' --region us-east-1
 
 artifacts:
   files:
     - backend/target/*.jar
-    - deploy/**/*  # Include the deploy files in the artifacts for later use
+    - deploy/**/*

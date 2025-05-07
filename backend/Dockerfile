@@ -1,14 +1,21 @@
-# Use an official OpenJDK runtime as a parent image
-FROM openjdk:11-jdk-slim
+# Use a base image with Java 11
+FROM amazoncorretto:11 as build
 
-# Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy the JAR file built by Maven to the container
-COPY target/*.jar /app/backend.jar
+# Copy the Maven pom.xml and download dependencies
+COPY pom.xml ./
+RUN mvn dependency:go-offline
 
-# Expose the port on which the backend will run
+# Copy the source code
+COPY src ./src
+
+# Package the Spring Boot app
+RUN mvn package -DskipTests
+
+# Expose the port Spring Boot will run on
 EXPOSE 8080
 
-# Run the JAR file
-ENTRYPOINT ["java", "-jar", "backend.jar"]
+# Start the Spring Boot application
+CMD ["java", "-jar", "/app/target/*.jar"]
