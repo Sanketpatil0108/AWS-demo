@@ -8,7 +8,7 @@ phases:
     commands:
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
-      - aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text > ec2-key.pem
+      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > ec2-key.pem
       - chmod 400 ec2-key.pem
 
   build:
