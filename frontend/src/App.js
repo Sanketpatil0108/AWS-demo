@@ -4,9 +4,15 @@ function App() {
   const [backendMessage, setBackendMessage] = useState('');
 
   useEffect(() => {
-    fetch('/api/message')
+    // Update the URL to point to the backend container in the Docker network
+    const backendUrl = 'http://springboot-backend:8080/api/message';
+    
+    fetch(backendUrl)
       .then(res => res.text())
-      .then(data => setBackendMessage(data));
+      .then(data => setBackendMessage(data))
+      .catch(error => {
+        console.error('Error fetching message:', error);
+      });
   }, []);
 
   return (
@@ -18,3 +24,4 @@ function App() {
 }
 
 export default App;
+
