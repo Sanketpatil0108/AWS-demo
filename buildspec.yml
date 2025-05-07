@@ -9,8 +9,12 @@ phases:
       - echo Installing dependencies...
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
-      - aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text > Sanketkey1.pem
-      - chmod 400 ec2-key.pem
+      - echo Base64-encoding deployment package...
+      - mkdir -p deploy
+      - cp -r docker-compose.yml postScript.sh frontend backend deploy/
+      - cd deploy && zip -r ../deploy.zip . && cd ..
+      - base64 deploy.zip > deploy.b64
+      - chmod 400 deploy.b64  # Make sure it's secure while building
 
   build:
     commands:
@@ -19,17 +23,27 @@ phases:
       - echo Packaging Spring Boot app...
       - cd backend && mvn package -DskipTests && cd ..
       - echo Preparing Docker deployment...
-      - mkdir -p deploy
-      - cp -r docker-compose.yml postScript.sh frontend backend deploy/
 
   post_build:
     commands:
-      - echo Deploying to EC2 via SCP...
-      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
-      - echo Starting containers on EC2...
-      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/deploy/postScript.sh"]}' --region us-east-1
+      - echo Sending base64 payload to EC2 via SSM...
+      - |
+        aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" \
+          --comment "Deploy app via base64 payload" \
+          --parameters '{
+            "commands": [
+              "cd /home/ec2-user",
+              "echo \"'"$(cat deploy.b64)"'\" | base64 -d > deploy.zip",
+              "unzip -o deploy.zip -d deploy",
+              "chmod +x deploy/postScript.sh",
+              "bash deploy/postScript.sh"
+            ]
+          }' \
+          --region us-east-1
 
 artifacts:
   files:
     - backend/target/*.jar
-    - deploy/**
+    - deploy/**/*
