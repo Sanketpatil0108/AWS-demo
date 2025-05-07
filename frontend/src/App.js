@@ -5,7 +5,7 @@ function App() {
 
   useEffect(() => {
     // Update the URL to point to the backend container in the Docker network
-    const backendUrl = 'http://springboot-backend:8080/api/message';
+    const backendUrl = '/api/message';
     
     fetch(backendUrl)
       .then(res => res.text())
