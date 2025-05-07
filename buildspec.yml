@@ -21,9 +21,18 @@ phases:
 
   post_build:
     commands:
-      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
-      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/deploy/start-app-dockerexample.sh"]}' --region us-east-1
+      # Retrieve the private key from Secrets Manager securely and set permissions (optional for troubleshooting)
+      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
 
+      # Use AWS SSM to create a deploy folder on the EC2 instance
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters 'commands=["mkdir -p /home/ec2-user/deploy"]' --region us-east-1
+
+      # Directly copy files from CodeBuild to EC2 instance using SSM (no S3 involved)
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters 'commands=["aws ssm put-file --local-file deploy/*.jar --destination /home/ec2-user/deploy/ --region us-east-1"]' --region us-east-1
+
+      # Run the start-app.sh script on EC2 instance via SSM to start the application
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/deploy/start-app-dockerexample.sh"]}' --region us-east-1
 artifacts:
   files:
     - backend/target/*.jar
