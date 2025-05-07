@@ -8,8 +8,8 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - REACT_REPO_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
-      - BACKEND_REPO_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
+      - REACT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
+      - BACKEND_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REACT_REPO_URI
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $BACKEND_REPO_URI
 
