@@ -1,5 +1,5 @@
 # Step 1: Build the React App
-FROM node:16 AS build
+FROM public.ecr.aws/docker/library/node:16 AS build
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN npm install
 RUN npm run build
 
 # Step 2: Serve the React app using NGINX
-FROM nginx:alpine
+FROM public.ecr.aws/docker/library/nginx:alpine
 
 COPY --from=build /app/build /usr/share/nginx/html
 
