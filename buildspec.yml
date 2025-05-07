@@ -2,38 +2,32 @@ version: 0.2
 
 phases:
   install:
-    commands:
-      # Install AWS CLI and Docker (if not pre-installed in the build image)
-      - echo Installing AWS CLI and Docker
-      - yum install -y aws-cli
-      - curl -fsSL https://get.docker.com | sh
-      - service docker start
+    runtime-versions:
+      docker: 20
+
   pre_build:
     commands:
-      # Set AWS ECR repository URLs
-      - REACT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
-      - SPRINGBOOT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
       - echo Logging in to Amazon ECR...
+      - REACT_REPO_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/myapp/react-app
+      - BACKEND_REPO_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/myapp/springboot-backend
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REACT_REPO_URI
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $SPRINGBOOT_REPO_URI
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $BACKEND_REPO_URI
+
   build:
     commands:
-      # Build Docker images for React and Spring Boot
-      - echo Building React app Docker image...
-      - cd frontend && docker build -t react-app .
-      - echo Building Spring Boot app Docker image...
-      - cd ../backend && docker build -t springboot-backend .
+      - echo Building Docker images...
+      - cd frontend
+      - docker build -t react-app .
+      - docker tag react-app:latest $REACT_REPO_URI:latest
+      - cd ../backend
+      - docker build -t springboot-backend .
+      - docker tag springboot-backend:latest $BACKEND_REPO_URI:latest
+
   post_build:
     commands:
-      # Tag Docker images
-      - echo Tagging Docker images...
-      - docker tag react-app:latest $REACT_REPO_URI:latest
-      - docker tag springboot-backend:latest $SPRINGBOOT_REPO_URI:latest
-      # Push images to ECR
-      - echo Pushing React Docker image to ECR...
+      - echo Pushing images to ECR...
       - docker push $REACT_REPO_URI:latest
-      - echo Pushing Spring Boot Docker image to ECR...
-      - docker push $SPRINGBOOT_REPO_URI:latest
+      - docker push $BACKEND_REPO_URI:latest
 
 artifacts:
   files: []
