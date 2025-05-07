@@ -35,7 +35,7 @@ phases:
           --parameters '{
             "commands": [
               "cd /home/ec2-user",
-              "echo \"'"$(cat deploy.b64)"'\" | base64 -d > deploy.zip",
+              "echo $(cat deploy.b64) | base64 -d > deploy.zip",
               "unzip -o deploy.zip -d deploy",
               "chmod +x deploy/postScript.sh",
               "bash deploy/postScript.sh"
