@@ -1,62 +1,59 @@
 version: 0.2
 
 phases:
-  pre_build:
+  install:
+    runtime-versions:
+      nodejs: 18
+      java: corretto11
     commands:
-      - echo Logging in to Docker Hub...
-      - DOCKER_USERNAME=$(aws secretsmanager get-secret-value --secret-id <docker-username-secret-id> --query SecretString --output text | jq -r '.username')
-      - DOCKER_PASSWORD=$(aws secretsmanager get-secret-value --secret-id <docker-password-secret-id> --query SecretString --output text | jq -r '.password')
-      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-      - echo Logging in to Amazon ECR...
-      - aws --version
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - REGION=us-east-1
-      - REPO_FRONTEND=my-frontend-app
-      - REPO_BACKEND=my-backend-app
-      - FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_FRONTEND
-      - BACKEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_BACKEND
-      - echo FRONTEND_URI=$FRONTEND_URI
-      - echo BACKEND_URI=$BACKEND_URI
-      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+      - echo "Checking directory structure..."
+      - ls -la
+      - echo "Installing frontend dependencies..."
+      - cd frontend
+      - npm install
+      - cd ..
+      - echo "Installing backend dependencies..."
+      - cd backend
+      - mvn install -DskipTests
+      - cd ..
+      - echo "Fetching EC2 private key from SSM Parameter Store..."
+      - aws ssm get-parameter --name /ec2/key-pair --with-decryption --query 'Parameter.Value' --output text > ec2-key.pem
+      - chmod 400 ec2-key.pem
+      - echo "Key fetched successfully!"
 
   build:
     commands:
-      - echo Build React frontend Docker image...
+      - echo "Building React frontend..."
       - cd frontend
-      - docker build -t $FRONTEND_URI .
+      - npm run build
       - cd ..
       
-      - echo Build Spring Boot backend Docker image...
+      - echo "Copying frontend build separately to deploy folder (optional for Apache)..."
+      - mkdir -p deploy/frontend
+      - cp -r frontend/build deploy/frontend/
+
+      - echo "Copying frontend to Spring Boot static resources..."
+      - cp -r frontend/build/* backend/src/main/resources/static/
+
+      - echo "Building backend JAR..."
       - cd backend
       - mvn package -DskipTests
-      - docker build -t $BACKEND_URI .
       - cd ..
+
+      - echo "Copying backend JAR and post-deploy script..."
+      - mkdir -p deploy
+      - cp backend/target/*.jar deploy/
+      - cp postScript.sh deploy/
 
   post_build:
     commands:
-      - echo Pushing Docker images to ECR...
-      - docker push $FRONTEND_URI
-      - docker push $BACKEND_URI
-      - echo Deploying to EC2...
-      - |
-        ssh -o StrictHostKeyChecking=no -i ec2-key.pem ec2-user@34.229.200.248 << 'EOF'
-          REGION=us-east-1
-          ACCOUNT_ID=309071121886
-          FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-frontend-app
-          BACKEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-backend-app
+      - echo "Sending deploy folder to EC2..."
+      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
+      - echo "Triggering EC2 to start Spring Boot app"
+      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/start-app.sh"]}' --comment "Start Spring Boot app via CodeBuild" --region us-east-1
 
-          echo Logging in to ECR...
-          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-
-          echo Pulling images...
-          docker pull $FRONTEND_URI
-          docker pull $BACKEND_URI
-
-          echo Stopping old containers...
-          docker stop frontend || true && docker rm frontend || true
-          docker stop backend || true && docker rm backend || true
-
-          echo Running new containers...
-          docker run -d --name frontend -p 80:80 $FRONTEND_URI
-          docker run -d --name backend -p 8080:8080 $BACKEND_URI
-        EOF
+artifacts:
+  files:
+    - backend/target/*.jar
+    - deploy/**/*
+  discard-paths: no
