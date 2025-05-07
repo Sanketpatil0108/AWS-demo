@@ -26,8 +26,8 @@ phases:
   post_build:
     commands:
       - echo Pushing images to ECR...
-      - docker push $REACT_REPO_URI:latest
-      - docker push $BACKEND_REPO_URI:latest
+      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo:latest
+      - docker push 309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo:latest
 
 artifacts:
   files: []
