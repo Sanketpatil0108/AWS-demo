@@ -3,6 +3,10 @@ version: 0.2
 phases:
   pre_build:
     commands:
+      - echo Logging in to Docker Hub...
+      - DOCKER_USERNAME=$(aws secretsmanager get-secret-value --secret-id <docker-username-secret-id> --query SecretString --output text | jq -r '.username')
+      - DOCKER_PASSWORD=$(aws secretsmanager get-secret-value --secret-id <docker-password-secret-id> --query SecretString --output text | jq -r '.password')
+      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
       - echo Logging in to Amazon ECR...
       - aws --version
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -33,13 +37,9 @@ phases:
       - echo Pushing Docker images to ECR...
       - docker push $FRONTEND_URI
       - docker push $BACKEND_URI
-
-      - echo Fetching SSH private key from Secrets Manager...
-      - export PRIVATE_KEY=$(aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text | jq -r '.["ssh-key"]')
-
-      - echo Connecting to EC2 and deploying...
+      - echo Deploying to EC2...
       - |
-        ssh -o StrictHostKeyChecking=no -i <(echo "$PRIVATE_KEY") ec2-user@34.229.200.248 << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ec2-key.pem ec2-user@34.229.200.248 << 'EOF'
           REGION=us-east-1
           ACCOUNT_ID=309071121886
           FRONTEND_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/my-frontend-app
