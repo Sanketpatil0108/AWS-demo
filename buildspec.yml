@@ -2,58 +2,38 @@ version: 0.2
 
 phases:
   install:
-    runtime-versions:
-      nodejs: 18
-      java: corretto11
     commands:
-      - echo "Checking directory structure..."
-      - ls -la
-      - echo "Installing frontend dependencies..."
-      - cd frontend
-      - npm install
-      - cd ..
-      - echo "Installing backend dependencies..."
-      - cd backend
-      - mvn install -DskipTests
-      - cd ..
-      - echo "Fetching EC2 private key from SSM Parameter Store..."
-      - aws ssm get-parameter --name /ec2/key-pair --with-decryption --query 'Parameter.Value' --output text > ec2-key.pem
-      - chmod 400 ec2-key.pem
-      - echo "Key fetched successfully!"
-
+      # Install AWS CLI and Docker (if not pre-installed in the build image)
+      - echo Installing AWS CLI and Docker
+      - yum install -y aws-cli
+      - curl -fsSL https://get.docker.com | sh
+      - service docker start
+  pre_build:
+    commands:
+      # Set AWS ECR repository URLs
+      - REACT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/react-app-repo
+      - SPRINGBOOT_REPO_URI=309071121886.dkr.ecr.us-east-1.amazonaws.com/springboot-backend-repo
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REACT_REPO_URI
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $SPRINGBOOT_REPO_URI
   build:
     commands:
-      - echo "Building React frontend..."
-      - cd frontend
-      - npm run build
-      - cd ..
-      
-      - echo "Copying frontend build separately to deploy folder (optional for Apache)..."
-      - mkdir -p deploy/frontend
-      - cp -r frontend/build deploy/frontend/
-
-      - echo "Copying frontend to Spring Boot static resources..."
-      - cp -r frontend/build/* backend/src/main/resources/static/
-
-      - echo "Building backend JAR..."
-      - cd backend
-      - mvn package -DskipTests
-      - cd ..
-
-      - echo "Copying backend JAR and post-deploy script..."
-      - mkdir -p deploy
-      - cp backend/target/*.jar deploy/
-      - cp postScript.sh deploy/
-
+      # Build Docker images for React and Spring Boot
+      - echo Building React app Docker image...
+      - cd frontend && docker build -t react-app .
+      - echo Building Spring Boot app Docker image...
+      - cd ../backend && docker build -t springboot-backend .
   post_build:
     commands:
-      - echo "Sending deploy folder to EC2..."
-      - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
-      - echo "Triggering EC2 to start Spring Boot app"
-      - aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" --parameters '{"commands":["/home/ec2-user/start-app.sh"]}' --comment "Start Spring Boot app via CodeBuild" --region us-east-1
+      # Tag Docker images
+      - echo Tagging Docker images...
+      - docker tag react-app:latest $REACT_REPO_URI:latest
+      - docker tag springboot-backend:latest $SPRINGBOOT_REPO_URI:latest
+      # Push images to ECR
+      - echo Pushing React Docker image to ECR...
+      - docker push $REACT_REPO_URI:latest
+      - echo Pushing Spring Boot Docker image to ECR...
+      - docker push $SPRINGBOOT_REPO_URI:latest
 
 artifacts:
-  files:
-    - backend/target/*.jar
-    - deploy/**/*
-  discard-paths: no
+  files: []
