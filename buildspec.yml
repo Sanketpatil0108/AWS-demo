@@ -10,7 +10,12 @@ phases:
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
       - echo "Fetching EC2 key from Secrets Manager"
-      - aws secretsmanager get-secret-value --secret-id CodeBuild-EC2-SSH-KEY --query SecretString --output text > ec2-key.pem
+      - echo "$(
+          aws secretsmanager get-secret-value \
+          --secret-id CodeBuild-EC2-SSH-KEY \
+          --query SecretString \
+          --output text
+        )" > ec2-key.pem
       - chmod 400 ec2-key.pem
 
   build:
