@@ -9,7 +9,7 @@ phases:
       - echo Installing dependencies...
       - cd frontend && npm install && cd ..
       - cd backend && mvn install -DskipTests && cd ..
-      - aws secretsmanager get-secret-value --secret-id /ec2/key-pair --query SecretString --output text > ec2-key.pem
+      - aws secretsmanager get-secret-value --secret-id abc --query SecretString --output text > ec2-key.pem
       - chmod 400 ec2-key.pem
 
   build:
