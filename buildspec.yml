@@ -8,7 +8,7 @@ phases:
     commands:
       - echo "Installing frontend and backend dependencies"
       - cd frontend && npm install && cd ..
-      - cd backend && mvn install -DskipTests && cd ..
+      - cd backend && mvn clean install -DskipTests && cd ..
       - echo "Fetching EC2 key from Secrets Manager"
       - aws secretsmanager get-secret-value --secret-id New-secret --query SecretString --output text > ec2-key.pem
       - chmod 400 ec2-key.pem
