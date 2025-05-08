@@ -35,7 +35,8 @@ phases:
       - chmod 400 ec2-key.pem
       - scp -o StrictHostKeyChecking=no -i ec2-key.pem -r deploy/ ec2-user@34.229.200.248:/home/ec2-user/
       - echo "Running start script on EC2 via SSM"
-      - aws ssm send-command \
+      - |
+        aws ssm send-command \
           --document-name "AWS-RunShellScript" \
           --targets "Key=instanceIds,Values=i-07af2f3a6f8912fe1" \
           --parameters '{"commands":["chmod +x /home/ec2-user/deploy/start-app-dockerexample.sh", "/home/ec2-user/deploy/start-app-dockerexample.sh"]}' \
