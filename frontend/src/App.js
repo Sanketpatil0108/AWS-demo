@@ -17,7 +17,7 @@ function App() {
 
   return (
     <div>
-      <h2>Hii Sneh from frontend !</h2>
+      <h2>Hii Sanket from frontend !</h2>
       <h3>{backendMessage}</h3>
     </div>
   );
